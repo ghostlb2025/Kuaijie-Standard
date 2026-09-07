@@ -82,6 +82,8 @@ namespace Miashot
     internal sealed class AppSettings
     {
         internal bool AutoSave;
+        internal string SaveFolder;
+        internal string FileNameTemplate;
         internal HotkeyBinding QuickCapture;
         internal HotkeyBinding AdvancedCapture;
         internal HotkeyBinding FullscreenCapture;
@@ -93,6 +95,8 @@ namespace Miashot
             return new AppSettings
             {
                 AutoSave = false,
+                SaveFolder = string.Empty,
+                FileNameTemplate = ScreenshotStorage.DefaultFileNameTemplate,
                 QuickCapture = new HotkeyBinding(NativeMethods.ModAlt, Keys.A),
                 AdvancedCapture = new HotkeyBinding(NativeMethods.ModAlt, Keys.S),
                 FullscreenCapture = new HotkeyBinding(NativeMethods.ModAlt, Keys.D),
@@ -106,6 +110,8 @@ namespace Miashot
             return new AppSettings
             {
                 AutoSave = AutoSave,
+                SaveFolder = SaveFolder,
+                FileNameTemplate = FileNameTemplate,
                 QuickCapture = QuickCapture.Clone(),
                 AdvancedCapture = AdvancedCapture.Clone(),
                 FullscreenCapture = FullscreenCapture.Clone(),
@@ -144,6 +150,10 @@ namespace Miashot
                 bool autoSave;
                 if (values.TryGetValue("AutoSave", out value) && bool.TryParse(value, out autoSave))
                     defaults.AutoSave = autoSave;
+                if (values.TryGetValue("SaveFolder", out value))
+                    defaults.SaveFolder = value;
+                if (values.TryGetValue("FileNameTemplate", out value))
+                    defaults.FileNameTemplate = value;
                 if (values.TryGetValue("QuickCapture", out value))
                     defaults.QuickCapture = HotkeyBinding.Parse(value, defaults.QuickCapture);
                 if (values.TryGetValue("AdvancedCapture", out value))
@@ -154,6 +164,14 @@ namespace Miashot
                     defaults.SaveRecent = HotkeyBinding.Parse(value, defaults.SaveRecent);
                 if (values.TryGetValue("DelayedCapture", out value))
                     defaults.DelayedCapture = HotkeyBinding.Parse(value, defaults.DelayedCapture);
+
+                string saveError;
+                if (!ScreenshotStorage.TryValidateSettings(defaults.SaveFolder,
+                    defaults.FileNameTemplate, out saveError))
+                {
+                    defaults.SaveFolder = string.Empty;
+                    defaults.FileNameTemplate = ScreenshotStorage.DefaultFileNameTemplate;
+                }
             }
             catch
             {
@@ -183,6 +201,8 @@ namespace Miashot
             {
                 "# Kuaijie settings",
                 "AutoSave=" + AutoSave,
+                "SaveFolder=" + (SaveFolder ?? string.Empty),
+                "FileNameTemplate=" + (FileNameTemplate ?? string.Empty),
                 "QuickCapture=" + QuickCapture.Serialize(),
                 "AdvancedCapture=" + AdvancedCapture.Serialize(),
                 "FullscreenCapture=" + FullscreenCapture.Serialize(),
@@ -307,6 +327,14 @@ namespace Miashot
     {
         private static readonly object SaveLock = new object();
 
+        internal static string DefaultFileNameTemplate
+        {
+            get
+            {
+                return ProductInfo.ScreenshotPrefix.TrimEnd('_') + "_{日期}_{序号}";
+            }
+        }
+
         internal static string PicturesFolder
         {
             get
@@ -322,29 +350,27 @@ namespace Miashot
         {
             lock (SaveLock)
             {
-                var folder = PicturesFolder;
+                var settings = AppSettings.Load();
+                var folder = string.IsNullOrWhiteSpace(settings.SaveFolder)
+                    ? PicturesFolder : settings.SaveFolder.Trim();
+                var template = string.IsNullOrWhiteSpace(settings.FileNameTemplate)
+                    ? DefaultFileNameTemplate : settings.FileNameTemplate.Trim();
+                string validationError;
+                if (!TryValidateSettings(folder, template, out validationError))
+                    throw new InvalidOperationException(validationError);
                 if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
-                var datePart = DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-                var prefix = ProductInfo.ScreenshotPrefix + datePart + "_";
-                var max = 0;
-                foreach (var file in Directory.GetFiles(folder, prefix + "*.png"))
-                {
-                    var name = Path.GetFileNameWithoutExtension(file);
-                    if (name == null || name.Length <= prefix.Length) continue;
-                    int value;
-                    if (int.TryParse(name.Substring(prefix.Length), NumberStyles.Integer,
-                        CultureInfo.InvariantCulture, out value) && value > max)
-                        max = value;
-                }
-
-                var next = max + 1;
+                var now = DateTime.Now;
+                var hasSequence = template.IndexOf("{序号}",
+                    StringComparison.Ordinal) >= 0;
+                var attempt = 0;
                 while (true)
                 {
-                    var number = next < 1000
-                        ? next.ToString("000", CultureInfo.InvariantCulture)
-                        : next.ToString(CultureInfo.InvariantCulture);
-                    var path = Path.Combine(folder, prefix + number + ".png");
-                    next++;
+                    attempt++;
+                    var fileName = RenderFileName(template, now, attempt);
+                    if (!hasSequence && attempt > 1)
+                        fileName += "_" + (attempt - 1).ToString("000",
+                            CultureInfo.InvariantCulture);
+                    var path = Path.Combine(folder, fileName + ".png");
                     if (File.Exists(path)) continue;
                     try
                     {
@@ -359,6 +385,85 @@ namespace Miashot
                     }
                 }
             }
+        }
+
+        internal static bool TryValidateSettings(string configuredFolder,
+            string template, out string error)
+        {
+            var folder = string.IsNullOrWhiteSpace(configuredFolder)
+                ? PicturesFolder : configuredFolder.Trim();
+            try
+            {
+                if (!Path.IsPathRooted(folder))
+                {
+                    error = "保存位置必须是完整的文件夹路径。";
+                    return false;
+                }
+                Path.GetFullPath(folder);
+            }
+            catch (Exception ex)
+            {
+                if (!(ex is ArgumentException) && !(ex is NotSupportedException) &&
+                    !(ex is PathTooLongException)) throw;
+                error = "保存位置无效，请重新选择文件夹。";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(template))
+            {
+                error = "文件名格式不能为空。";
+                return false;
+            }
+            template = template.Trim();
+            if (template.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+            {
+                error = "文件名格式无需填写 .png 扩展名。";
+                return false;
+            }
+            foreach (var invalid in Path.GetInvalidFileNameChars())
+                if (template.IndexOf(invalid) >= 0)
+                {
+                    error = "文件名格式包含 Windows 不允许的字符：“" + invalid + "”。";
+                    return false;
+                }
+
+            var remaining = template.Replace("{日期}", string.Empty)
+                .Replace("{时间}", string.Empty)
+                .Replace("{序号}", string.Empty);
+            if (remaining.IndexOf('{') >= 0 || remaining.IndexOf('}') >= 0)
+            {
+                error = "文件名格式中存在不支持的变量。";
+                return false;
+            }
+            var preview = RenderFileName(template,
+                new DateTime(2026, 9, 7, 15, 30, 45), 1);
+            if (string.IsNullOrWhiteSpace(preview) || preview == "." || preview == "..")
+            {
+                error = "文件名格式无法生成有效文件名。";
+                return false;
+            }
+
+            error = null;
+            return true;
+        }
+
+        internal static string PreviewFileName(string template)
+        {
+            string error;
+            if (!TryValidateSettings(string.Empty, template, out error)) return error;
+            return RenderFileName(template.Trim(),
+                new DateTime(2026, 9, 7, 15, 30, 45), 1) + ".png";
+        }
+
+        private static string RenderFileName(string template, DateTime now, int sequence)
+        {
+            var number = sequence < 1000
+                ? sequence.ToString("000", CultureInfo.InvariantCulture)
+                : sequence.ToString(CultureInfo.InvariantCulture);
+            return template.Replace("{日期}",
+                    now.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
+                .Replace("{时间}", now.ToString("HHmmss", CultureInfo.InvariantCulture))
+                .Replace("{序号}", number);
         }
     }
 
