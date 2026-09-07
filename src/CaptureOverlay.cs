@@ -693,7 +693,7 @@ namespace Miashot
         {
             var sourceBounds = new Rectangle(selection.Left + relativeBounds.Left,
                 selection.Top + relativeBounds.Top, relativeBounds.Width, relativeBounds.Height);
-            var block = Math.Max(5, (int)(drawWidth * 2));
+            var block = Math.Max(3, (int)Math.Round(drawWidth * 0.75f));
             var smallWidth = Math.Max(1, relativeBounds.Width / block);
             var smallHeight = Math.Max(1, relativeBounds.Height / block);
             using (var crop = new Bitmap(relativeBounds.Width, relativeBounds.Height, PixelFormat.Format32bppArgb))

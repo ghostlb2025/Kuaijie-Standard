@@ -43,12 +43,12 @@ namespace Miashot.Tests
                 DragCapture(0x12, 0x41, new Point(180, 180), new Point(540, 400));
                 AssertClipboardSize(360, 220, "Alt+A");
 
-                DragCapture(0x12, 0x53, new Point(240, 220), new Point(660, 480));
+                DragCapture(0x12, 0x44, new Point(240, 220), new Point(660, 480));
                 PressKey(0x0D);
                 Thread.Sleep(900);
-                AssertClipboardSize(420, 260, "Alt+S + Enter");
+                AssertClipboardSize(420, 260, "Alt+D + Enter");
 
-                SendHotkey(0x12, 0x53);
+                SendHotkey(0x12, 0x44);
                 Thread.Sleep(350);
                 Drag(new Point(220, 200), new Point(1120, 540));
                 Thread.Sleep(300);
@@ -56,10 +56,10 @@ namespace Miashot.Tests
                 Drag(new Point(340, 280), new Point(520, 390));
                 PressKey(0x0D);
                 Thread.Sleep(900);
-                AssertClipboardSize(900, 340, "Alt+S rectangle annotation");
+                AssertClipboardSize(900, 340, "Alt+D rectangle annotation");
                 AssertRedAnnotation();
 
-                SendHotkey(0x12, 0x53);
+                SendHotkey(0x12, 0x44);
                 Thread.Sleep(300);
                 Drag(new Point(300, 260), new Point(700, 500));
                 PressKey(0x1B);
@@ -69,9 +69,9 @@ namespace Miashot.Tests
                 var screen = Screen.PrimaryScreen;
                 SetCursorPos(screen.Bounds.Left + screen.Bounds.Width / 2,
                     screen.Bounds.Top + screen.Bounds.Height / 2);
-                SendHotkey(0x12, 0x44);
+                SendHotkey(0x12, 0x53);
                 Thread.Sleep(1200);
-                AssertClipboardSize(screen.Bounds.Width, screen.Bounds.Height, "Alt+D");
+                AssertClipboardSize(screen.Bounds.Width, screen.Bounds.Height, "Alt+S");
 
                 var gdiBefore = GetGuiResources(app.Handle, 0);
                 for (var index = 0; index < 20; index++)
@@ -88,8 +88,8 @@ namespace Miashot.Tests
                         gdiBefore + " -> " + gdiAfter);
 
                 File.WriteAllText(output,
-                    "UI_TEST_OK\r\nAlt+A=360x220\r\nAlt+S=420x260\r\n" +
-                    "annotation=900x340\r\ncancel=ok\r\nAlt+D=" +
+                    "UI_TEST_OK\r\nAlt+A=360x220\r\nAlt+D=420x260\r\n" +
+                    "annotation=900x340\r\ncancel=ok\r\nAlt+S=" +
                     screen.Bounds.Width + "x" + screen.Bounds.Height +
                     "\r\nrepeated captures=20, GDI " + gdiBefore + " -> " + gdiAfter);
                 return 0;

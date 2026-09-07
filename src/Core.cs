@@ -98,8 +98,8 @@ namespace Miashot
                 SaveFolder = string.Empty,
                 FileNameTemplate = ScreenshotStorage.DefaultFileNameTemplate,
                 QuickCapture = new HotkeyBinding(NativeMethods.ModAlt, Keys.A),
-                AdvancedCapture = new HotkeyBinding(NativeMethods.ModAlt, Keys.S),
-                FullscreenCapture = new HotkeyBinding(NativeMethods.ModAlt, Keys.D),
+                AdvancedCapture = new HotkeyBinding(NativeMethods.ModAlt, Keys.D),
+                FullscreenCapture = new HotkeyBinding(NativeMethods.ModAlt, Keys.S),
                 SaveRecent = new HotkeyBinding(NativeMethods.ModAlt, Keys.W),
                 DelayedCapture = new HotkeyBinding(NativeMethods.ModAlt, Keys.E)
             };
@@ -351,8 +351,7 @@ namespace Miashot
             lock (SaveLock)
             {
                 var settings = AppSettings.Load();
-                var folder = string.IsNullOrWhiteSpace(settings.SaveFolder)
-                    ? PicturesFolder : settings.SaveFolder.Trim();
+                var folder = ResolveSaveFolder(settings.SaveFolder);
                 var template = string.IsNullOrWhiteSpace(settings.FileNameTemplate)
                     ? DefaultFileNameTemplate : settings.FileNameTemplate.Trim();
                 string validationError;
@@ -390,8 +389,7 @@ namespace Miashot
         internal static bool TryValidateSettings(string configuredFolder,
             string template, out string error)
         {
-            var folder = string.IsNullOrWhiteSpace(configuredFolder)
-                ? PicturesFolder : configuredFolder.Trim();
+            var folder = ResolveSaveFolder(configuredFolder);
             try
             {
                 if (!Path.IsPathRooted(folder))
@@ -445,6 +443,12 @@ namespace Miashot
 
             error = null;
             return true;
+        }
+
+        internal static string ResolveSaveFolder(string configuredFolder)
+        {
+            return string.IsNullOrWhiteSpace(configuredFolder)
+                ? PicturesFolder : configuredFolder.Trim();
         }
 
         internal static string PreviewFileName(string template)

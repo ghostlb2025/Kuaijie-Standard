@@ -139,6 +139,7 @@ namespace Miashot
             menu.Items.Add(autoStartItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("打开“图片”文件夹", null, OnOpenPictures));
+            menu.Items.Add(new ToolStripMenuItem("截图保存设置...", null, OnSaveSettingsClick));
             menu.Items.Add(new ToolStripMenuItem("快捷键设置...", null, OnSettingsClick));
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("退出", null, OnExitClick));
@@ -513,6 +514,29 @@ namespace Miashot
             }
         }
 
+        private void OnSaveSettingsClick(object sender, EventArgs e)
+        {
+            using (var form = new SaveSettingsForm(settings, appIcon))
+            {
+                while (form.ShowDialog() == DialogResult.OK)
+                {
+                    AppSettings updated;
+                    string validationError;
+                    if (!form.TryGetSettings(out updated, out validationError))
+                    {
+                        MessageBox.Show(validationError, ProductInfo.DisplayName,
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        continue;
+                    }
+                    updated.AutoSave = settings.AutoSave;
+                    settings = updated;
+                    try { settings.Save(); }
+                    catch (Exception ex) { ShowError("保存设置已生效，但无法写入配置", ex); }
+                    break;
+                }
+            }
+        }
+
         private static string CommandName(HotkeyCommand command)
         {
             if (command == HotkeyCommand.QuickCapture) return "快速区域截图";
@@ -541,7 +565,7 @@ namespace Miashot
         {
             try
             {
-                var folder = ScreenshotStorage.PicturesFolder;
+                var folder = ScreenshotStorage.ResolveSaveFolder(settings.SaveFolder);
                 if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
                 Process.Start("explorer.exe", folder);
             }
