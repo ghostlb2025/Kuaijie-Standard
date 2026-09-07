@@ -6,7 +6,7 @@
 
 ## 下载
 
-在 GitHub 的 **Releases** 页面下载 `快截-标准版.zip`，解压后直接运行 `快截-标准版.exe`，无需安装。
+在 GitHub 的 **Releases** 页面下载 `Kuaijie-Standard-Windows-x64.zip`，解压后直接运行 `快截-标准版.exe`，无需安装。
 
 ## 功能
 
