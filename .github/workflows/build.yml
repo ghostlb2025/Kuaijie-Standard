@@ -1,0 +1,22 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build standard edition
+        shell: powershell
+        run: .\build.ps1
+      - name: Upload portable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kuaijie-Standard-Windows-x64
+          path: dist/*.zip
+          if-no-files-found: error

@@ -1,0 +1,14 @@
+# Build and verification output
+dist/
+artifacts/
+tools/*.exe
+tests/*.exe
+tests/*.txt
+
+# IDE and local Codex state
+.vs/
+.vscode/
+.idea/
+.codex-log/
+*.user
+*.suo

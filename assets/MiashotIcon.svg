@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <path d="M44 94V44h50 M212 162v50h-50"
+        fill="none" stroke="#075ea8" stroke-width="20" stroke-linecap="round" stroke-linejoin="miter"/>
+  <path d="M44 94V44h50 M212 162v50h-50"
+        fill="none" stroke="#46c3df" stroke-width="11" stroke-linecap="round" stroke-linejoin="miter"/>
+  <path d="M158 28 67 141h50l-28 88L191 97h-52z"
+        fill="#ffb43b" stroke="#075ea8" stroke-width="8" stroke-linejoin="round" paint-order="stroke fill"/>
+</svg>
